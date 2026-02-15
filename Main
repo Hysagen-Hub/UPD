@@ -4,6 +4,6 @@ local Hub = Lib.CreateMain("HYSAGEN HUB")
 
 local Tab1 = Hub:CreateTab("Scripts")
 Tab1:AddLabel("Hysagen Hub Scripts")
-MyTab:AddButtonRow("Tank Game!", "execute", function()
+Tab1:AddButtonRow("Tank Game!", "execute", function()
     loadstring(game:HttpGet(('https://raw.githubusercontent.com/Hysagen-Hub/Tank-Game-Gui/refs/heads/main/Main'),true))()
 end)
