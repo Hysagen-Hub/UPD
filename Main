@@ -1,9 +1,231 @@
 local Lib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/Hysagen-Hub/MyOwnModule/refs/heads/main/module'),true))()
 
+local players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local localPlayer = players.LocalPlayer
+
+local nameTags = {}
+local nameHighlightEnabled = false
+local noclipEnabled = false
+local speed = 0
+local speeds = 1
+local tpwalking = false
+local nowe = false
+local isHidden = false
+local hiddenPlayers = {}
+local originalProperties = {}
+local speed = 0
 local Hub = Lib.CreateMain("HYSAGEN HUB")
 
-local Tab1 = Hub:CreateTab("Scripts")
-Tab1:AddLabel("Scripts")
-Tab1:AddButtonRow("Tank Game!", "execute", function()
-    loadstring(game:HttpGet(('https://raw.githubusercontent.com/Hysagen-Hub/Tank-Game-Gui/refs/heads/main/Main'),true))()
+local function clearNameTags()
+    for _, tag in pairs(nameTags) do
+        if tag then tag:Destroy() end
+    end
+    nameTags = {}
+end
+
+local function createNameTag(model, color)
+    if nameTags[model] then return end
+    if model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") then
+        local player = players:GetPlayerFromCharacter(model)
+        local playerName = player and (player.DisplayName or player.Name) or model.Name
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "NameTag"
+        billboard.Adornee = model:FindFirstChild("HumanoidRootPart")
+        billboard.Size = UDim2.new(0, 100, 0, 30)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = localPlayer:WaitForChild("PlayerGui")
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.BackgroundTransparency = 1
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 20
+        textLabel.TextColor3 = color
+        textLabel.TextStrokeTransparency = 0.4
+        textLabel.Text = playerName
+        textLabel.Parent = billboard
+
+        nameTags[model] = billboard
+    end
+end
+
+local function updateNameTags()
+    if not nameHighlightEnabled then return end
+    local allDescendants = workspace:GetDescendants()
+    local processedModels = {}
+
+    for _, item in pairs(allDescendants) do
+        if item:IsA("Model") and item:FindFirstChild("HumanoidRootPart") then
+            if not processedModels[item] then
+                processedModels[item] = true
+                createNameTag(item, Color3.fromRGB(255, 255, 255))
+            end
+        end
+    end
+
+    for model, tag in pairs(nameTags) do
+        if not model.Parent or not model:IsDescendantOf(workspace) then
+            tag:Destroy()
+            nameTags[model] = nil
+        end
+    end
+end
+
+local function toggleFlyLogic(state)
+    local speaker = localPlayer
+    local chr = speaker.Character
+    if not chr or not chr:FindFirstChildOfClass("Humanoid") then return end
+    local hum = chr:FindFirstChildOfClass("Humanoid")
+
+    if state == false then
+        nowe = false
+        local states = Enum.HumanoidStateType:GetEnumItems()
+        for _, s in pairs(states) do hum:SetStateEnabled(s, true) end
+        hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+        if chr:FindFirstChild("Animate") then chr.Animate.Disabled = false end
+        tpwalking = false
+    else
+        nowe = true
+        spawn(function()
+            tpwalking = true
+            while tpwalking and RunService.Heartbeat:Wait() and chr and hum and hum.Parent do
+                if hum.MoveDirection.Magnitude > 0 then
+                    chr:TranslateBy(hum.MoveDirection * speeds)
+                end
+            end
+        end)
+
+        if chr:FindFirstChild("Animate") then chr.Animate.Disabled = true end
+        for _, v in next, hum:GetPlayingAnimationTracks() do v:AdjustSpeed(0) end
+        
+        local statesToDisable = {
+            "Climbing", "FallingDown", "Flying", "Freefall", "GettingUp", 
+            "Jumping", "Landed", "Physics", "PlatformStanding", "Ragdoll", 
+            "Running", "RunningNoPhysics", "Seated", "StrafingNoPhysics", "Swimming"
+        }
+        for _, sName in pairs(statesToDisable) do hum:SetStateEnabled(Enum.HumanoidStateType[sName], false) end
+        hum:ChangeState(Enum.HumanoidStateType.Swimming)
+        local root = (hum.RigType == Enum.HumanoidRigType.R6) and chr:WaitForChild("Torso") or chr:WaitForChild("UpperTorso")
+        local bg = Instance.new("BodyGyro", root)
+        bg.P = 9e4
+        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.cframe = root.CFrame
+        local bv = Instance.new("BodyVelocity", root)
+        bv.velocity = Vector3.new(0, 0.1, 0)
+        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+
+        hum.PlatformStand = true
+
+        spawn(function()
+            while nowe and hum.Health > 0 do
+                RunService.RenderStepped:Wait()
+                bv.velocity = (workspace.CurrentCamera.CFrame.LookVector * 0)
+                bg.cframe = workspace.CurrentCamera.CFrame
+            end
+            bg:Destroy()
+            bv:Destroy()
+            hum.PlatformStand = false
+        end)
+    end
+end
+
+local function noclip()
+    local char = localPlayer.Character
+    if not char then return end
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = not noclipEnabled
+        end
+    end
+end
+
+local function fullBright()
+    game.Lighting.GlobalShadows = false
+    game.Lighting.Brightness = 1
+    game.Lighting.ShadowSoftness = 0
+end
+
+local MainTab = Hub:CreateTab("Main")
+
+MainTab:AddSlider("Physical Speed", 0, 300, 0, function(v)
+    speed = v
+end)
+
+MainTab:AddToggleButton("NoClip", false, function(state)
+    noclipEnabled = state
+end)
+
+MainTab:AddToggleButton("Fly Mode", false, function(state)
+    toggleFlyLogic(state)
+end)
+
+MainTab:AddSlider("Fly Boost (Speeds)", 1, 20, 1, function(v)
+    speeds = v
+end)
+
+local VisualTab = Hub:CreateTab("Visual")
+
+VisualTab:AddToggleButton("Nickname ESP", false, function(state)
+    nameHighlightEnabled = state
+    if state then updateNameTags() else clearNameTags() end
+end)
+
+VisualTab:AddButtonRow("FullBright", "Apply", function() fullBright() end)
+
+VisualTab:AddButtonRow("Remove Fog", "Execute", function()
+    game.Lighting.FogEnd = 100000
+    game.Lighting.FogStart = 0
+    if game.Lighting:FindFirstChild("Atmosphere") then
+        game.Lighting.Atmosphere.Density = 0
+    end
+end)
+
+local ScriptTab = Hub:CreateTab("Scripts")
+
+local scripts = {
+    ["Infinite Yield"] = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source",
+    ["Bang GUI"] = "https://raw.githubusercontent.com/Hysagen-Hub/FUCK-BANG-GUI/refs/heads/main/main",
+    ["Auto Block"] = "https://raw.githubusercontent.com/skibidi399/Auto-block-script/refs/heads/main/FINAL%20AUTO%20BLOCK",
+    ["Flip Script"] = "https://raw.githubusercontent.com/SHRTRYScriptMANhere/stolenahhfrotflip/refs/heads/main/Flip"
+}
+
+for name, url in pairs(scripts) do
+    ScriptTab:AddButtonRow(name, "Load", function() loadstring(game:HttpGet(url))() end)
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    local char = localPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if hrp and hum and speed > 0 then
+        if hum.MoveDirection.Magnitude > 0 then
+            local targetVelocity = hum.MoveDirection * speed
+            hrp.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, hrp.AssemblyLinearVelocity.Y, targetVelocity.Z)
+        end
+    end
+    if nameHighlightEnabled then updateNameTags() end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if noclipEnabled then noclip() end
+    game.Lighting.FogEnd = 100000
+    game.Lighting.GlobalShadows = false
+end)
+
+localPlayer.CharacterAdded:Connect(function(char)
+    nameTags = {}
+    wait(0.7)
+    if char:FindFirstChild("Animate") then char.Animate.Disabled = false end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Insert then
+        Hub.ScreenGui.Enabled = not Hub.ScreenGui.Enabled
+    end
 end)
