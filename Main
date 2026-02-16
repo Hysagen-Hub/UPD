@@ -192,6 +192,7 @@ local scripts = {
     ["Bang GUI"] = "https://raw.githubusercontent.com/Hysagen-Hub/FUCK-BANG-GUI/refs/heads/main/main",
     ["Auto Block"] = "https://raw.githubusercontent.com/skibidi399/Auto-block-script/refs/heads/main/FINAL%20AUTO%20BLOCK",
     ["Flip Script"] = "https://raw.githubusercontent.com/SHRTRYScriptMANhere/stolenahhfrotflip/refs/heads/main/Flip"
+    ["Tank Game"] = "https://github.com/Hysagen-Hub/Tank-Game-Gui/blob/main/Main"
 }
 
 for name, url in pairs(scripts) do
