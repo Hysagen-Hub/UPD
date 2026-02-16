@@ -10,15 +10,14 @@ local nameTags = {}
 local nameHighlightEnabled = false
 local noclipEnabled = false
 local speed = 0
-local speeds = 1
+local flySpeed = 5
+local flyEnabled = false
 local tpwalking = false
 local nowe = false
-local isHidden = false
-local hiddenPlayers = {}
-local originalProperties = {}
-local speed = 0
+
 local Hub = Lib.CreateMain("HYSAGEN HUB")
 
+-- Функции для NameTags
 local function clearNameTags()
     for _, tag in pairs(nameTags) do
         if tag then tag:Destroy() end
@@ -76,6 +75,7 @@ local function updateNameTags()
     end
 end
 
+-- ТВОЙ ОРИГИНАЛЬНЫЙ FLY MODE
 local function toggleFlyLogic(state)
     local speaker = localPlayer
     local chr = speaker.Character
@@ -95,7 +95,7 @@ local function toggleFlyLogic(state)
             tpwalking = true
             while tpwalking and RunService.Heartbeat:Wait() and chr and hum and hum.Parent do
                 if hum.MoveDirection.Magnitude > 0 then
-                    chr:TranslateBy(hum.MoveDirection * speeds)
+                    chr:TranslateBy(hum.MoveDirection * flySpeed*0.4)
                 end
             end
         end)
@@ -134,6 +134,7 @@ local function toggleFlyLogic(state)
     end
 end
 
+-- Функция для noclip
 local function noclip()
     local char = localPlayer.Character
     if not char then return end
@@ -144,35 +145,53 @@ local function noclip()
     end
 end
 
+-- Функция FullBright
 local function fullBright()
     game.Lighting.GlobalShadows = false
     game.Lighting.Brightness = 1
     game.Lighting.ShadowSoftness = 0
 end
 
+-- СОЗДАНИЕ ВКЛАДОК
 local MainTab = Hub:CreateTab("Main")
 
-MainTab:AddSlider("Physical Speed", 0, 300, 0, function(v)
-    speed = v
+-- Speed Hack с биндом (клавиша X)
+local speedValue = 16
+MainTab:AddToggleWithBind("Speed Hack", false, Enum.KeyCode.X, function(state)
+    speed = state and speedValue or 0
 end)
 
-MainTab:AddToggleButton("NoClip", false, function(state)
+MainTab:AddSlider("Speed Value", 0, 300, 16, function(v)
+    speedValue = v
+    if speed > 0 then speed = v end
+end)
+
+-- NoClip с биндом (клавиша N)
+MainTab:AddToggleWithBind("NoClip", false, Enum.KeyCode.N, function(state)
     noclipEnabled = state
 end)
 
-MainTab:AddToggleButton("Fly Mode", false, function(state)
+-- Fly Mode с биндом (клавиша F)
+MainTab:AddToggleWithBind("Fly Mode", false, Enum.KeyCode.F, function(state)
     toggleFlyLogic(state)
+    flyEnabled = state
 end)
 
-MainTab:AddSlider("Fly Boost (Speeds)", 1, 20, 1, function(v)
-    speeds = v
+MainTab:AddSlider("Fly Speed", 1, 20, 1, function(v)
+    flySpeed = v
 end)
 
+-- Visual вкладка
 local VisualTab = Hub:CreateTab("Visual")
 
-VisualTab:AddToggleButton("Nickname ESP", false, function(state)
+-- Name ESP с биндом (клавиша V)
+VisualTab:AddToggleWithBind("Nickname ESP", false, Enum.KeyCode.V, function(state)
     nameHighlightEnabled = state
-    if state then updateNameTags() else clearNameTags() end
+    if state then 
+        updateNameTags() 
+    else 
+        clearNameTags() 
+    end
 end)
 
 VisualTab:AddButtonRow("FullBright", "Apply", function() fullBright() end)
@@ -185,31 +204,36 @@ VisualTab:AddButtonRow("Remove Fog", "Execute", function()
     end
 end)
 
+-- Scripts вкладка
 local ScriptTab = Hub:CreateTab("Scripts")
 
 local scripts = {
     ["Infinite Yield"] = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source",
     ["Bang GUI"] = "https://raw.githubusercontent.com/Hysagen-Hub/FUCK-BANG-GUI/refs/heads/main/main",
     ["Auto Block"] = "https://raw.githubusercontent.com/skibidi399/Auto-block-script/refs/heads/main/FINAL%20AUTO%20BLOCK",
-    ["Flip Script"] = "https://raw.githubusercontent.com/SHRTRYScriptMANhere/stolenahhfrotflip/refs/heads/main/Flip"
-    ["Tank Game"] = "https://github.com/Hysagen-Hub/Tank-Game-Gui/blob/main/Main"
+    ["Flip Script"] = "https://raw.githubusercontent.com/SHRTRYScriptMANhere/stolenahhfrotflip/refs/heads/main/Flip",
+    ["Tank Game"] = "https://raw.githubusercontent.com/Hysagen-Hub/Tank-Game-Gui/main/Main"
 }
 
 for name, url in pairs(scripts) do
     ScriptTab:AddButtonRow(name, "Load", function() loadstring(game:HttpGet(url))() end)
 end
 
+-- Основные циклы
 RunService.RenderStepped:Connect(function(dt)
     local char = localPlayer.Character
     local hum = char and char:FindFirstChild("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
+    -- Speed Hack
     if hrp and hum and speed > 0 then
         if hum.MoveDirection.Magnitude > 0 then
             local targetVelocity = hum.MoveDirection * speed
             hrp.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, hrp.AssemblyLinearVelocity.Y, targetVelocity.Z)
         end
     end
+    
+    -- Name ESP
     if nameHighlightEnabled then updateNameTags() end
 end)
 
@@ -219,12 +243,14 @@ RunService.Heartbeat:Connect(function()
     game.Lighting.GlobalShadows = false
 end)
 
+-- Обработка смены персонажа
 localPlayer.CharacterAdded:Connect(function(char)
     nameTags = {}
     wait(0.7)
     if char:FindFirstChild("Animate") then char.Animate.Disabled = false end
 end)
 
+-- Toggle UI with Insert key
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Insert then
         Hub.ScreenGui.Enabled = not Hub.ScreenGui.Enabled
