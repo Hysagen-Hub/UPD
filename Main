@@ -252,7 +252,7 @@ end)
 
 -- Toggle UI with Insert key
 UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Insert then
+    if input.KeyCode == Enum.KeyCode.Delete then
         Hub.ScreenGui.Enabled = not Hub.ScreenGui.Enabled
     end
 end)
