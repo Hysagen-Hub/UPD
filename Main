@@ -9,6 +9,7 @@ local localPlayer = players.LocalPlayer
 local nameTags = {}
 local nameHighlightEnabled = false
 local noclipEnabled = false
+local speed = 0
 local speeds = 1
 local tpwalking = false
 local nowe = false
